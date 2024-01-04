@@ -1,0 +1,55 @@
+https://play.picoctf.org/practice/challenge/186
+
+Files can always be changed in a secret way. Can you find the flag? cat.jpg
+
+Solution:
+
+For this, i did not manage to figure out. Google and searching taught me a few things regarding images.
+https://ctftime.org/writeup/26973
+
+For hidden images, one can try the following methods:
+
+1. Run 'file' to ensure that it is an image
+file cat.jpg
+This gave me some description and metadata regarding the file.
+
+2. Hidden data within the file: binwalk
+Usage: https://www.kali.org/tools/binwalk/
+binwalk -B fileName.extension
+Runs a file signature scan on the given file
+A file signature is used to verify the content of a file
+The -B parameter is used to extract binary data from the file
+binwalk -B cat.jpg
+
+The author uses binwalk to check for hidden files.
+
+binwalk can be used to check for randomness in data (entropy): binwalk -E
+https://fr3ak-hacks.medium.com/analysing-and-extracting-firmware-using-binwalk-982012281ff6
+-W extension produces a hexdump display
+Hexdumps show on the LHS: hexadecimal representation of data
+RHS: encoding in ASCII
+
+Running binwalk -W cat.jpg gives me a hex dump.
+https://www.pentestpartners.com/security-blog/using-hexdump-analysis-for-firmware-extraction-a-how-to/
+Explains how that one can figure a location that represents that of a hash.
+Hashes can come from encrypted data. So these locations might come in useful
+
+File metadata is shown at the top in an hex editor or viewer, then the content.
+So since the hint of the question is regarding details of the image, we can focus on the top first
+
+Using a hex editor: online: https://web.imhex.werwolv.net
+Pasting the file into the editor, i get what the author sees that stands out - two strings of randomness:
+1. W5M0MpCehiHzreSzNTczkc9d
+2. cGljb0NURnt0aGVfbTN0YWRhdGFfMXNfbW9kaWZpZWR9
+
+There are many possible encodings. I checked online and realise that CTFs may encode the data in any of them.
+So the best approach is not one approach, but to try out the most common ones first:
+ASCII, UTF-8, UTF-16, Base64 and Hexadecimal.
+Regardless, i threw the two strings into a decoder online that shows a range of possible decoded results:
+https://dencode.com/en/
+And got that the Base64 encoding will yield	
+picoCTF{the_m3tadata_1s_modified} for the second hash
+
+The first hash shows nothing on the decoder.
+
+So the answer is picoCTF{the_m3tadata_1s_modified}
