@@ -1,0 +1,32 @@
+https://play.picoctf.org/practice/challenge/156
+There is a nice program that you can talk to by using this command in a shell: $ nc mercury.picoctf.net 21135, but it doesn't speak English...
+
+Solution:
+The hints introduced netcat and the concept of conversion of hexadecimal to word.
+
+Doing the command gives us a series of ASCII characters in decimal, separated by newline.
+
+Here, i notice that one approach is to save the output first to a file. Then read the file line by line,
+converting and concatenating along the way.
+
+To save to a file: 
+nc mercury.picoctf.net 21135 > savedFile.txt
+
+To read the file line by line:
+Google search suggests using a pipe operator | and on its right hand side perform necessary actions
+https://stackoverflow.com/questions/10929453/read-a-file-line-by-line-assigning-the-value-to-a-variable
+https://www.baeldung.com/linux/shell-decimal-as-ascii
+Then i realise that for such purposes it is better off using awk:
+https://www.geeksforgeeks.org/awk-command-unixlinux-examples/
+https://www.baeldung.com/linux/awk-guide
+
+Main takeaway: fields are represented as $1, $2 and the number represents the split text by a delimiter
+In awk, curly braces contains the action.
+
+So we want to do something like:
+
+awk { convertToDecimal($1) } savedFile.txt 
+
+Then now to convert to decimal, we can use " printf "%c", $1 "
+
+So the final command is awk '{printf "%c", $1}' savedFile.txt
