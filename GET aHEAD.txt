@@ -1,0 +1,59 @@
+https://play.picoctf.org/practice/challenge/132
+
+Description:
+Find the flag being held on this server to get ahead of the competition http://mercury.picoctf.net:34561/
+
+Solution:
+The website shows two buttons. Choose red and choose blue
+
+The title of the challenge suggests something to do with HTTP requests.
+GET and HEAD?
+Googling HEAD: MDN Web docs: https://developer.mozilla.org/en-US/docs/Web/HTTP/Methods/HEAD
+It is a request where it tells the server to respond just the headers.
+
+The response to a HEAD request should not have any body. If it has, client should ignore it.
+
+Hint 1 says there might be > 2 possible choices apart from choose red and or choose blue
+Hint 2 says to use tools to modify the request and to look at the response.
+
+Modify the request: I have prior experience with Postman, so i shall use an open-source alternative to it: Hoppscotch:
+https://hoppscotch.io
+
+First i will analyse what is being sent to the server when clicking on either of the two buttons.
+
+Click on inspect > network. Here we can see what API calls are being made in the background.
+
+Clicking on "choose red" button:
+A index.php appears. Clicking on it: we can see it responds with the page itself.
+Here, i do not see anything interesting... So i try on blue.
+
+Clicking on "choose blue" button:
+Similar results with just an index.php. But this time a POST.
+
+Nothing interesting...
+
+Now the title mentions HEAD. So maybe it wants us to send a HEAD request?
+
+To do so, then we must first figure out where to send the request.
+
+In the two API calls inspected above, we can see the request URL. Copy-pasting this to Hoppscotch,
+we change the API call to HEAD. Then we send the request.
+
+Here, i get a response with the flag in the header: picoCTF{r3j3ct_th3_du4l1ty_8f878508}
+
+So there is the solution.
+
+Note: Regarding how the author did this, i have some idea. This might be wrong, but if i understand it 
+correctly, now, the response by the server technically can be redefined by the person who programmed
+the backend.
+
+It is possible to make a GET request act like a POST request, if you design the backend in such a way.
+Because ultimate GET and POST requests are just conventions.
+
+In a way, if you really wanted to, but it would be bad practice, you could just code out the backend code
+to handle any POST request to be like PUT, same for GET and POST. Or even create your own custom request method.
+
+Theoretically possible, but not recommended. It is best to follow conventions.
+
+Here, in this challenge, the author intentionally added a flag header in the response whenever a request is sent to the server.
+Hence the flag header variable with the flag is returned.
