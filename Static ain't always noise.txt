@@ -1,0 +1,108 @@
+https://play.picoctf.org/practice/challenge/163
+
+Description:
+Can you look at the data in this binary: static? This BASH script might help!
+
+Attached are two files:
+1. 'static' with no file extension
+2. 'Itdis.sh':
+
+#!/bin/bash
+
+
+
+echo "Attempting disassembly of $1 ..."
+
+
+#This usage of "objdump" disassembles all (-D) of the first file given by 
+#invoker, but only prints out the ".text" section (-j .text) (only section
+#that matters in almost any compiled program...
+
+objdump -Dj .text $1 > $1.ltdis.x86_64.txt
+
+
+#Check that $1.ltdis.x86_64.txt is non-empty
+#Continue if it is, otherwise print error and eject
+
+if [ -s "$1.ltdis.x86_64.txt" ]
+then
+	echo "Disassembly successful! Available at: $1.ltdis.x86_64.txt"
+
+	echo "Ripping strings from binary with file offsets..."
+	strings -a -t x $1 > $1.ltdis.strings.txt
+	echo "Any strings found in $1 have been written to $1.ltdis.strings.txt with file offset"
+
+
+
+else
+	echo "Disassembly failed!"
+	echo "Usage: ltdis.sh <program-file>"
+	echo "Bye!"
+fi
+
+
+Solution:
+
+As in information.txt, i learnt to use binwalk on files that are unknown to reveal more details regarding it.
+
+Running binwalk static gives me a description of it:
+    ELF, 64-bit LSB shared object, AMD x86-64, version 1 (SYSV)
+
+ELF in Google described the file as an Executable and Linkable Format.
+
+For an executable:
+https://jdelezenne.github.io/Codex/Software/Executable.html
+
+The above webpage describes sections within an executable software.
+This part is more useful, since in the above's script, we see something about the .text section
+
+Breakdown of objdump -Dj .text $1 > $1.ltdis.x86_64.txt
+Resources: https://man7.org/linux/man-pages/man1/objdump.1.html, https://www.thegeekstuff.com/2012/09/objdump-examples/
+objdump: used to disassemble an object file.
+
+Object file: https://www.javatpoint.com/compilation-process-in-c#:~:text=The%20compilation%20process%20can%20be,Compiling%2C%20Assembling%2C%20and%20Linking.&text=The%20preprocessor%20takes%20the%20source,preprocessor%20directive%20and%20interprets%20it
+
+This website describes the flow of compiling a program. We can see then, that the object files objdump is referring to
+is after the compilation of assembly code.
+
+And ELF is a file format for object files. Which is the attached `static` file.
+The resource man7 also describes the arguments to objdump: Each just provides more information regarding how
+the object file should be disassembled. The ones used here:
+-D: --disassemble-all
+-j: --section = section
+So disassemble the .text section.
+
+The $1. I guess that this is the first argument to the script?
+
+This means calling this bash script we also put in something that is used as $1.
+$1 refers to the position of the input i think.
+
+So if i run Itdis.sh static $1 will assume `static` as its value.
+
+Then redirection operator outputs to a new file: static.ltdis.x86_64.txt?
+
+Then moving on.. i see -s.
+
+In the comments of the challenge the author writes that this simply checks if the file is empty or not.
+
+If empty: output "Disassembly successful..."
+If not: throw an error
+
+-s is also to check if a file is empty in Bash:
+https://stackoverflow.com/questions/9964823/how-to-check-if-a-file-is-empty-in-bash
+
+So beginning the challenge. I shall do what information.txt taught me: binwalk, then check the file for strings, then hex edit.
+
+Here when we do the hex edit:
+
+binwalk -W static
+
+, we can immediately see the flag nestled within the hexadecimals:
+................|
+0x00001020  70 69 63 6F 43 54 46 7B 64 31 35 61 35 6D 5F 74 |picoCTF{d15a5m_t|
+0x00001030  33 34 73 33 72 5F 36 66 38 63 38 32 30 30 7D 00 |34s3r_6f8c8200}.|
+0x00001040  47 43 43 3A 20 28 55 62 75 6E 74 75 20 37 2E 35 |GCC:.(Ubuntu.7.5|
+0x00001050  2E 30 2D 33 75 62 75 6E 74 75 31 7E 31 38 2E 30 |.0-3ubuntu1~18.0|
+0x00001060  34 29 20 37 2E 35 2E 30 00 00 00 00 00 00 00 00 |4).7.5.0
+
+So the answer is picoCTF{d15a5m_t34s3r_6f8c8200}
