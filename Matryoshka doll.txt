@@ -1,0 +1,123 @@
+https://play.picoctf.org/practice/challenge/129?page=2
+
+Description:
+Matryoshka dolls are a set of wooden dolls of decreasing size placed one inside
+another. What's the final one? Image: this
+
+Solution:
+
+The file attached is named dolls.jpg.
+
+The idea is to determine the flag within the image.
+
+From information.txt, we can try a few ways first:
+
+1. file dolls.jpg
+This returns:
+dolls.jpg: PNG image data, 594 x 1104, 8-bit/color RGBA, non-interlaced
+
+non-interlaced:
+This website explains very well:
+https://www.creitive.com/global/blog/which-image-file-format-to-choose
+
+A non-interlaced image encoding:
+non-interlaced loads the image line-by-line from top to bottom.
+
+An interlaced image encoding:
+Image is loaded at all straightaway, but blurry at first. Then gradually sharpens
+
+Then i try to view the file in hexadecimal: binwalk -W dolls.jpg.
+
+This throws out a massively large chunk of hexadecimal output which i think there is a better
+way to approach this. the flag might be inside but it is slow to find.
+
+binwalk -B dolls.jpg gives:
+
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+0             0x0             PNG image, 594 x 1104, 8-bit/color RGBA, non-interlaced
+3226          0xC9A           TIFF image data, big-endian, offset of first image directory: 8
+272492        0x4286C         Zip archive data, at least v2.0 to extract, compressed size: 378950, uncompressed size: 383938, name: base_images/2_c.jpg
+651608        0x9F158         End of Zip archive, footer length: 22
+
+With this, i extract out the hidden known files: binwalk -e dolls.jpg.
+This produces a folder called _dolls.jpg.extracted with all the extracted files inside.
+
+There is a zip within this folder called 4286C.zip.
+Running unzip 4286C.zip, We get another .jpg that is nothing special regarding its visuals.
+
+So i run file on it again. It shows that the file is just a JPG.
+
+I repeat, calling binwalk -B on the new file. It reveals the same pattern as before:
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+0             0x0             PNG image, 526 x 1106, 8-bit/color RGBA, non-interlaced
+3226          0xC9A           TIFF image data, big-endian, offset of first image directory: 8
+187707        0x2DD3B         Zip archive data, at least v2.0 to extract, compressed size: 196043, uncompressed size: 201445, name: base_images/3_c.jpg
+383805        0x5DB3D         End of Zip archive, footer length: 22
+383916        0x5DBAC         End of Zip archive, footer length: 22
+
+So i run again binwalk -e on the file.
+
+Same pattern. So i do the above steps again...:
+
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+0             0x0             PNG image, 320 x 768, 8-bit/color RGBA, non-interlaced
+3226          0xC9A           TIFF image data, big-endian, offset of first image directory: 8
+79578         0x136DA         Zip archive data, at least v2.0 to extract, compressed size: 65, uncompressed size: 81, name: flag.txt
+79787         0x137AB         End of Zip archive, footer length: 22
+
+This time there is flag.txt:
+
+picoCTF{4f11048e83ffc7d342a15bd2309b47de}
+
+which is indeed the flag and solution.
+
+Regarding how the author managed to put in an archive into the .jpg file,
+Googling search explains that:
+
+It is steganography.
+
+Many of the resources on Google show how, but never really explain why the tools that exist to hide
+the files works as it should.
+
+Googling search deeper, i find a few methods: LSB substitution.
+
+The Least-Significant-Bits is the right-most bit in a binary string.
+
+So the rough idea is the right-most bit is being substituted with bits in the actual message to be hidden
+in the image.
+
+Here is a discussion of the LSB substitution:
+https://stackoverflow.com/questions/49638628/understanding-image-steganography-by-lsb-substitution-method
+
+How the simplest form of LSB substitution works:
+    1. Image pixels are in the form [xxxxxxxa, xxxxxxxb, ...]
+        because of the nature of images: pixels having the form of 8 bits (0 - 255 representing RGB values),
+    2. Just substitute the LSB of each item in the array: a and b to be substituted with two bits of the message
+        to be hidden.
+        If you have 10 bits in your message, you will need 10 pixels to hide the message.
+
+How the generalised form of LSB substitution works:
+    1. Image pixels are in the form [aaaaaaaa, bbbbbbbb, ...]
+    2. Pick the number of bits you would like to hide in a pixel.
+        So if you want to hide 4 bits into a pixel, this number is 4.
+        Let this number be k. So k = 4.
+        So in one element of the above's array, you would ideally substitute the last 4 digits.
+    3. Then let the number of bits in your hidden message by X. if X = 13, you will need
+        ( (13 // 4) + 1 = 4 ) pixels minimally to hide your message.
+    4. Then because k = 4, we separate this X = 13 bits into groups of 4 bits:
+        [x0x1x2x3,x4x5x6x7,x8x9x10x11,x12x13x?x?].
+        Set x? to be the original pixels in the image.
+    5. So for each element in 4, there are 4 bits in the element. So going back to 1.:
+        we will substitute the last four bits and result in:
+        [aaaax0x1x2x3, bbbbx4x5x6x7, ccccx8x9x10x11, ddddx12x13dd]
+
+Why is LSB used instead of MSB:
+The LSB has lower value, hence the changes made to the overall image is less impactful.
+Compared to the MSB with larger value due to its position, if you substitute the MSB, it will be more
+impactful.
