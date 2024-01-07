@@ -1,0 +1,49 @@
+https://play.picoctf.org/practice/challenge/176
+
+Description:
+
+Using tabcomplete in the Terminal will add years to your life, esp. 
+when dealing with long rambling directory structures and filenames: 
+Addadshashanammu.zip
+
+
+The attached file contains a lot of nested folders. In the deepest folder,
+we see a file with no extension: fang-of-haynekhtnamet
+
+Solution:
+
+tabcomplete: did not yield results. So i think the author meant just using tab.
+
+I think the author is testing for familiarity with the terminal.
+The flag should be in the last file.
+
+Googling search how to open zip in Bash, we get:
+https://askubuntu.com/questions/86849/how-to-unzip-a-zip-file-from-the-terminal
+
+So i ran:
+unzip Addadshashanammu.zip and it extracted to a folder called 'Addadshashanammu'
+
+I can cd all the way to the file, but i think this is not the intended approach.
+
+So Googling for ways to quickly enter nested directories, i see no related tricks...
+
+Then so i try cd and tab. But it does nothing.
+Then i try cd Addadshashanammu and try to tab. This time, it appends a slash and the folder within it.
+
+This works and hence is probably what was intended.
+
+Here then i navigate to the final and only file.
+
+From information.txt, i learnt to run binwalk on the file to gather description.
+I call binwalk fang-of-haynekhtnamet and it returns me an ELF file.
+
+This, from Static ain't always noise.txt, i see that it is an object file.
+From here, then i call binwalk -W fang-of-haynekhtnamet to view the contents of the file in hexadecimal
+and then you can see the flag within the contents:
+
+0x000006E0  01 00 02 00 00 00 00 00 2A 5A 41 50 21 2A 20 70 |........*ZAP!*.p|
+0x000006F0  69 63 6F 43 54 46 7B 6C 33 76 33 6C 5F 75 70 21 |icoCTF{l3v3l_up!|
+0x00000700  5F 74 34 6B 33 5F 34 5F 72 33 35 74 21 5F 32 62 |_t4k3_4_r35t!_2b|
+0x00000710  63 66 62 32 61 62 7D 00 01 1B 03 3B 3C 00 00 00 |cfb2ab}....;<...|
+
+So the flag is picoCTF{l3v3l_up!_t4k3_4_r35t!_2bcfb2ab} which is the solution.
