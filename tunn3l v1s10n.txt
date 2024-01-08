@@ -1,0 +1,165 @@
+https://play.picoctf.org/practice/challenge/112?page=2
+
+Description:
+We found this file. Recover the flag.
+
+Solution:
+
+The flag has no extension and is titled "tunn3l_v1s10n".
+
+With such a file, we can first run `file tunn3l_v1s10n`. It shows that it is `data`.
+
+Then i ran "binwalk -B tunn3l_v1s10n" to scan for any common file signatures.
+
+With this, i get:
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+33211         0x81BB          TROC filesystem, 1263425345 file entries
+948694        0xE79D6         StuffIt Deluxe Segment (data): f:IK
+
+Googling search what a TROC filesystem is, i get no results. This could be meaningless.
+I move on to Google search StuffIt is: it is an unzipping/zipping tool.
+Here, it seems to be meaningless as well.
+
+So i move on to the next step: `binwalk -W tunn3l_v1s10n` to perform a hexdump.
+
+This gave me an extremely, extremely long list of hexadecimals with no other clues.
+
+At this stage, i honestly took did not know how to solve this. So i went to see how it is solved:
+
+This post is where i think is a good approach:
+https://ctftime.org/writeup/28157
+
+The thing is, the `file` command could not pick out the type of the file;
+but it seems that the tool `exiftool` could correctly identify the type of the file.
+
+A hypothesis is that this tool is more specialised in figuring out image types, compared to the file command.
+Googling search how `file` works:
+
+file uses several kinds of tests: https://unix.stackexchange.com/questions/151008/linux-file-command-classifying-files
+1. If file does not exist or cannot be read, it throws an error of file cannot be found
+2. If file is not a regular file, its file type will be identified.
+    The procedure includes checking the directory of the file
+    Also block specials: https://unix.stackexchange.com/questions/60034/what-are-character-special-and-block-special-files-in-a-unix-system
+        These are called block devices as well. They behave like normal files.
+        Just that the read and writes off these files by hardware are in blocks of data at a single time.
+
+        In contrast, there are character specials; character devices act like pipes; that do the same but one bit at a time and not a block.
+
+        A device file, which encompasses both the above, is an interface for a device driver that appears in a file system as if it were an ordinary file. 
+        They are Character devices, Block devices and Pseudo-devices (like /dev/null).
+
+        Example of character devices: Keyboard, Mouse, Monitor.
+        Example of block devices: Hard drive, memory
+3. The length of the file is 0, an empty file is returned.
+4. Makes a guess based on position-sensitive tests.
+    So this could explain why it cannot correctly identify the file type.
+5. Makes a guess at identifying its contents based on context-sensitive default system tests.
+
+Since in this case the author can and has intentionally avoided these positions in 4 and 5, it renders
+the `file` utility useless here.
+
+Contrast this to the tool the CTF walkthrough used: exiftool.
+This tool is more specialised and suited for images; used for forensic analysis of images.
+
+So running `exiftool tunn3l_v1s10n` returns more information just like in the walkthrough.
+It reveals that the file is indeed a .bmp but cannot be opened:
+
+ExifTool Version Number         : 12.40
+File Name                       : tunn3l_v1s10n
+Directory                       : .
+File Size                       : 2.8 MiB
+File Modification Date/Time     : 2024:01:08 21:30:01+00:00
+File Access Date/Time           : 2024:01:08 21:45:51+00:00
+File Inode Change Date/Time     : 2024:01:08 21:45:51+00:00
+File Permissions                : -rwxrwxrwx
+File Type                       : BMP
+File Type Extension             : bmp
+MIME Type                       : image/bmp
+BMP Version                     : Unknown (53434)
+Image Width                     : 1134
+Image Height                    : 306
+Planes                          : 1
+Bit Depth                       : 24
+Compression                     : None
+Image Length                    : 2893400
+Pixels Per Meter X              : 5669
+Pixels Per Meter Y              : 5669
+Num Colors                      : Use BitDepth
+Num Important Colors            : All
+Red Mask                        : 0x27171a23
+Green Mask                      : 0x20291b1e
+Blue Mask                       : 0x1e212a1d
+Alpha Mask                      : 0x311a1d26
+Color Space                     : Unknown (,5%()
+Rendering Intent                : Unknown (826103054)
+Image Size                      : 1134x306
+Megapixels                      : 0.347
+
+The author of the CTF walkthrough Wikipedias more information regarding this image type: .bmp to figure out why it is not showing.
+He analyses the header because in here, we can see that `file` does not immediately pick it out as a .bmp.
+So the header might have incorrect byte pattern.
+https://en.wikipedia.org/wiki/BMP_file_format
+
+In the Wikipedia for bitmaps it does explain and show the what positions should have what bits and bytes.
+For example, "the header field used to identify the BMP and DIB file is 0x42 0x4D in hexadecimal"
+and this matches the first two hexadecimals when i load the tunn3l_v1s10n.bmp file into a hex editor or viewer:
+https://hexed.it.
+
+The author of the CTF walkthrough scans for why the image is not displaying.
+
+The Wikipedia section on DIB header might explain why the image did not render even after appending a .bmp to the file:
+`This block of bytes tells the application detailed information about the image, which will be used to display the image on the screen.`
+
+From wikipedia, 14 bytes of the start are reserved for the file header, thereafter is the
+DIB header section:
+
+Offset (hex)	Offset (dec)	Size (bytes)	OS/2 1.x BITMAPCOREHEADER[3]
+0E	14	4	The size of this header (12 bytes)
+12	18	2	The bitmap width in pixels (unsigned 16-bit)
+14	20	2	The bitmap height in pixels (unsigned 16-bit)
+16	22	2	The number of color planes, must be 1
+18	24	2	The number of bits per pixel
+
+At this point, i watched another walkthrough and perspective of this challenge which taught me how to solve from here:
+https://www.youtube.com/watch?v=d63buMlAUHM
+
+The video compares the problematic bitmap with a working one: he figures out immediately the problematic hexadecimals and fixes them:
+02:10 => 0A: changed to 36, 0B: changed to 00, 0E: changed to 28 and 0F: changed to 00.
+
+Then here by renaming the file with extension .bmp, it opens but does not show the correct flag.
+
+So in the title it is mentioned tunnel vision. The trick was actually to enlarge this image.
+
+With Wikipedia and the information above, you can see which parts of the header contains the width and height for the image.
+
+Using HxD, we can edit the hex values of the file: play with the width and height of the image to enlarge it.
+A fast way to figure out is to simply use the above's information by exiftool to figure out the hexadecimals of width and height,
+then find the values via estimating where it is in the HxD. Then understand that it is little endian, so the hexadecimals are not AB CD but
+CD AB:
+Using Python, we can see what we want to find in HxD is:
+>>> hex(1134)
+'0x46e'
+>>> hex(306)
+'0x132'
+
+So we want 6e 04 and 32 01 in HxD to be changed to make the image taller.
+Slowly increasing the height, and as revealed in the walkthrough video: once you change the height to 850: hex(850) = 0x352 => modify the height
+in HxD to 52 03 for hexadecimals representing the height, the bitmap reveals the flag:
+
+picoCTF{qu1t3_a_v13w_2020}
+
+Learning points:
+
+1. Regarding images, and or possible a particular file type (like maybe audio), it is better to use specialised
+tools to identify the file, instead of using `file`. This is because `file` ultimately makes predictions and guesses.
+So it may not be very accurate. Similarly, this applies to using HxD if you need finer controls over hex editing a file.
+
+2. If running `file` reveals no information about the file, and that tool reveals that it is an image or even an audio or any
+other specialised formats that does not perform its task, it is useful to analyses the header contents FIRST, at least. 
+
+3. Take note of little endian or big endian. If little endian, read from right to left. Opposite for big endian
+
+4. You can use an existing example file to check what is wrong with the challenged file, in HxD. The video showcases
+this method to be very fast in figuring and fixing problematic headers from the file with correct working headers.
