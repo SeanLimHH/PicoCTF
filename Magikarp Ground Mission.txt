@@ -1,0 +1,46 @@
+https://play.picoctf.org/practice/challenge/189?page=2
+
+Description:
+
+Do you know how to move between directories and read files in the shell? Start the container, `ssh` to it, and then `ls` once connected to begin. Login via `ssh` as `ctf-player` with the password, `a13b7f9d`
+Additional details will be available after launching your challenge instance.
+
+Solution:
+Based on the description, i just run ssh ctf-player@venus.picoctf.net -p 59681
+Then enter the password given `a13b7f9d` and then this connects me to the virtual container in a server.
+
+Here, i type dir. It reveals two files:
+
+1of3.flag.txt  instructions-to-2of3.txt
+
+Then i ran `cat 1of3.flag.txt`.
+
+This gave me a flag, the first part:
+picoCTF{xxsh_
+
+Similarly, i ran:
+cat instructions-to-2of3.txt
+
+This gave me a hint:
+Next, go to the root of all things, more succinctly `/`.
+The author here probably meant for me to cd to move up to the parent directory.
+So i run cd ..
+
+It shows
+3of3.flag.txt  drop-in
+
+cat 3of3.flag.txt reveals the second part of the flag:
+71be5264}
+
+Here i realise this is not the flag, i am missing the 2nd part of the flag.
+
+Then i try cd / on the first directory because of the hint.
+This navigated me to the root directory with the 2of2.flag.txt
+
+Running cat 2of2.flag.txt gave me the second part of the flag:
+0ut_0f_\/\/4t3r_
+
+This disconnects me in the shell from the virtual container once i ran the last command.
+
+So the flag is picoCTF{xxsh_0ut_0f_\/\/4t3r_71be5264}.
+
