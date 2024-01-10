@@ -1,0 +1,154 @@
+https://play.picoctf.org/practice/challenge/160?page=2
+
+Description:
+
+What integer does this program print with arguments 266134863 and 1592237099?
+File: chall.S Flag format: picoCTF{XXXXXXXX} ->
+(hex, lowercase, no 0x, and 32 bits. ex. 5614267 would be picoCTF{0055aabb})
+
+chall.S:
+
+	.arch armv8-a
+	.file	"chall.c"
+	.text
+	.align	2
+	.global	func1
+	.type	func1, %function
+func1:
+	sub	sp, sp, #16
+	str	w0, [sp, 12]
+	str	w1, [sp, 8]
+	ldr	w1, [sp, 12]
+	ldr	w0, [sp, 8]
+	cmp	w1, w0
+	bls	.L2
+	ldr	w0, [sp, 12]
+	b	.L3
+.L2:
+	ldr	w0, [sp, 8]
+.L3:
+	add	sp, sp, 16
+	ret
+	.size	func1, .-func1
+	.section	.rodata
+	.align	3
+.LC0:
+	.string	"Result: %ld\n"
+	.text
+	.align	2
+	.global	main
+	.type	main, %function
+main:
+	stp	x29, x30, [sp, -48]!
+	add	x29, sp, 0
+	str	x19, [sp, 16]
+	str	w0, [x29, 44]
+	str	x1, [x29, 32]
+	ldr	x0, [x29, 32]
+	add	x0, x0, 8
+	ldr	x0, [x0]
+	bl	atoi
+	mov	w19, w0
+	ldr	x0, [x29, 32]
+	add	x0, x0, 16
+	ldr	x0, [x0]
+	bl	atoi
+	mov	w1, w0
+	mov	w0, w19
+	bl	func1
+	mov	w1, w0
+	adrp	x0, .LC0
+	add	x0, x0, :lo12:.LC0
+	bl	printf
+	mov	w0, 0
+	ldr	x19, [sp, 16]
+	ldp	x29, x30, [sp], 48
+	ret
+	.size	main, .-main
+	.ident	"GCC: (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) 7.5.0"
+	.section	.note.GNU-stack,"",@progbits
+
+Solution:
+
+I spent a significant amount on time in learning the basics as i only know a little bit about
+ARM assembly. Here are the notes i took which may or may not be correct:
+
+The dot is the directive, but what does it mean?:
+https://downloads.ti.com/docs/esd/SPNU118O/Content/SPNU118O_HTML/assembler_directives.html#:~:text=Assembler%20directives%20supply%20data%20to,Control%20the%20appearance%20of%20listings
+
+A directive is best understood as an organiser for data and instructions on how to manage the data.
+For example,
+
+.data directive allows for data to be thrown into the "data" holder with its own rules.
+Different directive names have their own rules; hence why it is called a directive.
+
+A .data directive will thus have different set of instructions from a .type directive, or any other type of directive.
+
+This rules can be simple or complicated, but the documentation shows how data is being
+managed in .data and how it is being used.
+
+The website above explains a few common directives:
+
+    These directives associate portions of an assembly language program with the appropriate sections:
+
+    The .bss directive reserves space in the .bss section for uninitialized variables.
+    The .data directive identifies portions of code in the .data section. The .data section usually contains initialized data.
+    The .retain directive can be used to indicate that the current or specified section must be included in the linked output. Thus even if no other sections included in the link reference the current or specified section, it is still included in the link.
+    The .retainrefs directive can be used to force sections that refer to the specified section. This is useful in the case of interrupt vectors.
+    The .sect directive defines an initialized named section and associates subsequent code or data with that section. A section defined with .sect can contain code or data.
+    The .text directive identifies portions of code in the .text section. The .text section usually contains executable code.
+    The .usect directive reserves space in an uninitialized named section. The .usect directive is similar to the .bss directive, but it allows you to reserve space separately from the .bss section.
+
+The main takeaway here is that in each of this directive, there is a set of assembly instructions to handle the data.
+And these differ from one another.
+
+Returning back to this challenge, we can focus on what is being used:
+
+The first line with .arch armv8-a suggests that the architecture being used is armv8-a:
+https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/Armv8-A%20Instruction%20Set%20Architecture.pdf?revision=ebf53406-04fd-4c67-a485-1b329febfb3e
+
+So whatever we check should be in line with the above document.
+
+
+.align meaning
+https://stackoverflow.com/questions/27528796/what-does-align-in-arm-architecture
+So the .align 2 in the code means its rightmost 1 bit is 0.
+    This can also be expressed as "an address is 2^m-bytes aligned if its rightmost m bits are all zero"
+
+We first look at main; it is where the program's entry point is at.
+
+https://azeria-labs.com/arm-data-types-and-registers-part-2/
+This link explains the registers;
+SP: R13, stack pointer.
+
+We can check what the operations mean:
+https://azeria-labs.com/arm-instruction-set-part-3/
+MNEMONIC{S}{condition} {Rd}, Operand1, Operand2
+
+MNEMONIC     - Short name (mnemonic) of the instruction
+{S}          - An optional suffix. If S is specified, the condition flags are updated on the result of the operation
+{condition}  - Condition that is needed to be met in order for the instruction to be executed
+{Rd}         - Register (destination) for storing the result of the instruction
+Operand1     - First operand. Either a register or an immediate value 
+Operand2     - Second (flexible) operand. Can be an immediate value (number) or a register with an optional shift
+
+The relevant parts are {Rd}, Operand1 and Operand2.
+
+So in the challenge: in func1 first line:
+
+	sub	sp, sp, #16
+
+We are subtracting actual value 16 (immediate value) from SP, then storing it in SP.
+Essentially replacing the SP with itself - 16
+
+The second line is trickier; it has square brackets:
+
+	str	w0, [sp, 12]
+
+In the same website we can find notes on this:
+https://azeria-labs.com/memory-instructions-load-and-store-part-4/
+
+ARM uses a load-store model for memory access which means that only load/store (LDR and STR) instructions can access memory.
+
+WIP. I will continue working on this problem another time. This is so that i can consolidate this chunk of information.
+

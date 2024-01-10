@@ -1,0 +1,19 @@
+https://play.picoctf.org/practice/challenge/18?page=2
+
+Description:
+Kishor Balan tipped us off that the following code may need inspection: 
+https://jupiter.challenges.picoctf.org/problem/9670/ (link) or 
+http://jupiter.challenges.picoctf.org:9670
+
+This is the hint: How do you inspect web code on a browser?
+
+Solution:
+
+This challenge just requires one to demonstrate the knowledge of being able to inspect the client's code.
+
+Right clicking on the website > Developer Tools > Inspect > Sources,
+
+we can immediately see the client-side code and in there reveals the three parts of the flag:
+In the HTML, CSS and JS files.
+
+picoCTF{tru3_d3t3ct1ve_0r_ju5t_lucky?2e7b23e3}
