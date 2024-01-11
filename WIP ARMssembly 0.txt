@@ -92,12 +92,18 @@ The website above explains a few common directives:
     These directives associate portions of an assembly language program with the appropriate sections:
 
     The .bss directive reserves space in the .bss section for uninitialized variables.
-    The .data directive identifies portions of code in the .data section. The .data section usually contains initialized data.
-    The .retain directive can be used to indicate that the current or specified section must be included in the linked output. Thus even if no other sections included in the link reference the current or specified section, it is still included in the link.
-    The .retainrefs directive can be used to force sections that refer to the specified section. This is useful in the case of interrupt vectors.
-    The .sect directive defines an initialized named section and associates subsequent code or data with that section. A section defined with .sect can contain code or data.
-    The .text directive identifies portions of code in the .text section. The .text section usually contains executable code.
-    The .usect directive reserves space in an uninitialized named section. The .usect directive is similar to the .bss directive, but it allows you to reserve space separately from the .bss section.
+    The .data directive identifies portions of code in the .data section.
+		The .data section usually contains initialized data.
+    The .retain directive can be used to indicate that the current or specified section must be included in the linked output.
+		Thus even if no other sections included in the link reference the current or specified section, it is still included in the link.
+    The .retainrefs directive can be used to force sections that refer to the specified section.
+		This is useful in the case of interrupt vectors.
+    The .sect directive defines an initialized named section and associates subsequent code or data with that section.
+		A section defined with .sect can contain code or data.
+    The .text directive identifies portions of code in the .text section.
+		The .text section usually contains executable code.
+    The .usect directive reserves space in an uninitialized named section.
+		The .usect directive is similar to the .bss directive, but it allows you to reserve space separately from the .bss section.
 
 The main takeaway here is that in each of this directive, there is a set of assembly instructions to handle the data.
 And these differ from one another.
@@ -126,11 +132,14 @@ https://azeria-labs.com/arm-instruction-set-part-3/
 MNEMONIC{S}{condition} {Rd}, Operand1, Operand2
 
 MNEMONIC     - Short name (mnemonic) of the instruction
-{S}          - An optional suffix. If S is specified, the condition flags are updated on the result of the operation
-{condition}  - Condition that is needed to be met in order for the instruction to be executed
+{S}          - An optional suffix. If S is specified, the condition flags are 
+				updated on the result of the operation
+{condition}  - Condition that is needed to be met in order for the instruction to 
+				be executed
 {Rd}         - Register (destination) for storing the result of the instruction
 Operand1     - First operand. Either a register or an immediate value 
-Operand2     - Second (flexible) operand. Can be an immediate value (number) or a register with an optional shift
+Operand2     - Second (flexible) operand. Can be an immediate value (number) 
+or a register with an optional shift
 
 The relevant parts are {Rd}, Operand1 and Operand2.
 
@@ -141,6 +150,15 @@ So in the challenge: in func1 first line:
 We are subtracting actual value 16 (immediate value) from SP, then storing it in SP.
 Essentially replacing the SP with itself - 16
 
+https://azeria-labs.com/functions-and-the-stack-part-7/
+From this, we can see that the purpose of doing so is allocation of memory.
+We use Stack for storing temporary data such as local variables of some function,
+environment variables which helps us to transition between the functions, etc.
+We interact with the stack using PUSH and POP instructions.
+
+The SP registers holds the conceptual "pointer" to the next available address in the stack.
+
+
 The second line is trickier; it has square brackets:
 
 	str	w0, [sp, 12]
@@ -148,7 +166,63 @@ The second line is trickier; it has square brackets:
 In the same website we can find notes on this:
 https://azeria-labs.com/memory-instructions-load-and-store-part-4/
 
-ARM uses a load-store model for memory access which means that only load/store (LDR and STR) instructions can access memory.
+ARM uses a load-store model for memory access which means that only
+load/store (LDR and STR) instructions can access memory. While on x86 most
+instructions are allowed to directly operate on data in memory, on ARM
+data must be moved from memory into registers before being operated on.
+LDR Ra, [Rb] means value in the register Rb is loaded onto Ra.
 
-WIP. I will continue working on this problem another time. This is so that i can consolidate this chunk of information.
+	str	w0, [sp, 12]
 
+Is the offset form: 12 is another variation of an intermediate value? The answer in:
+https://stackoverflow.com/questions/59020911/what-do-and-mean-in-arm-assembly-language
+
+So it is like #12.
+
+Here we have in main:
+
+	stp	x29, x30, [sp, -48]!
+
+This article succinctly describes the first part with
+
+https://stackoverflow.com/questions/64638627/explain-arm64-instruction-stp
+
+This is store pair of registers (STP); it stores 2 32 word or 64-bit doublewords
+into registers x29 and x30.
+
+The line is pushing onto the stack value in register 30 to value in register 29:
+https://developer.arm.com/documentation/ddi0602/2023-12/Base-Instructions/STP--Store-Pair-of-Registers-
+
+Registers 29: 
+
+[sp, -48] is the offset -48 from the value in the stack pointer.
+
+Here when we see the last line: 
+	ldp	x29, x30, [sp], 48
+
+We can deduce the stp line is allocating memory on the stack, function prologue, and this ldp line
+is popping off the stack; reversing this allocation, function epilogue:
+https://stackoverflow.com/questions/14765406/function-prologue-and-epilogue-in-c
+https://www.learnvulnerabilityresearch.com/stack-frame-function-prologue
+https://azeria-labs.com/functions-and-the-stack-part-7/
+
+Every function has a prologue.
+This prologue will look same as in other functions in the same program.
+The general steps:
+	The first is always pushing the Frame and Link Register (FP and LR) onto the stack
+		So this should be 
+			stp	x29, x30, [sp, -48]!
+			
+			x29 is the FP and x30 is the LR?
+
+	So at this point, the FP and LR has the same value as the SP
+
+What is LR: https://www.sciencedirect.com/topics/engineering/link-register#:~:text=The%20special%20link%20register%20(LR,to%20a%20generic%20handler%20routine.
+LR is Link Register used to hold the return address for a function call.
+
+What is BP: https://www.baskent.edu.tr/~tkaracay/etudio/ders/prg/pascal/PasHTM2/pas/lowlevel.html#:~:text=BP%20is%20base%20pointer%2C%20SP,to%20point%20the%20current%20stack.
+BP is the Base Pointer used to preserve space to use local variables. This is also known as EBP.
+
+The video describes the prologue better: https://www.youtube.com/watch?v=RU5vUIl1vRs
+There is an instruction pointer that points to the next line of code to be executed.
+This is EIP
