@@ -223,6 +223,120 @@ LR is Link Register used to hold the return address for a function call.
 What is BP: https://www.baskent.edu.tr/~tkaracay/etudio/ders/prg/pascal/PasHTM2/pas/lowlevel.html#:~:text=BP%20is%20base%20pointer%2C%20SP,to%20point%20the%20current%20stack.
 BP is the Base Pointer used to preserve space to use local variables. This is also known as EBP.
 
-The video describes the prologue better: https://www.youtube.com/watch?v=RU5vUIl1vRs
+The video describes what happens during function calls: https://www.youtube.com/watch?v=RU5vUIl1vRs
 There is an instruction pointer that points to the next line of code to be executed.
-This is EIP
+This is the EIP.
+
+The ESP is the SP pointer. Points to an existing value at the top of the stack.
+
+When the program faces a function call, the ESP is decremented to the next available
+empty index in the stack. Then, the EIP's value is pushed onto the stack.
+
+Then, when the running line is RET; the EIP becomes blank, the EIP is going to incremented to the value of the stack'
+s last value in the stack popped.
+
+The ESP will however assume the next value in the stack since it has been popped.
+
+Then moving onto the next line after the function call has been completed.
+
+At this point, the state of ESP and EIP will be like as before the function call.
+
+The general sequence of function prologue on ARM: https://devblogs.microsoft.com/oldnewthing/20210622-00/?p=105332
+
+    push    {r4-r7,r11,lr}      ; save a bunch of registers
+    add     r11, sp, #0x10      ; link into frame pointer chain
+    sub     sp, sp, #0x20       ; allocate space for locals
+                                ; and outbound stack parameters
+
+Going back to the challenge, we can see a similar structure:
+
+	stp	x29, x30, [sp, -48]!
+	add	x29, sp, 0
+	str	x19, [sp, 16]
+
+Where str x19 line stores value of Register 19 into an address equal to SP with offset of 16.
+This is the final line of the prologue.
+
+Then one can trace the epilogue's start:
+
+	ldr	x19, [sp, 16]
+
+Where the Register 19 is loaded with the value in address equal to SP with offset of 16
+
+Going back to the code snippet:
+
+	str	w0, [x29, 44]
+	str	x1, [x29, 32]
+
+The 'w' in w0 represent the lower 32 bits of the registers being used: 9.1.2, https://diveintosystems.org/book/C9-ARM64/basics.html
+32 bits of data is thus being stored here, hence register w is used.
+This also renders the upper 32 bits of the registers inaccessible
+
+This line stores the lower 32 bits of register 0 with value in address equal to register 29 with offset of 44.
+
+The next line stores similarly, but now just register 1 value in [x29 + 32].
+
+The next line:
+
+	ldr	x0, [x29, 32]
+
+This loads register x0 with value in address register 29 with offset 32
+
+	add	x0, x0, 8
+	ldr	x0, [x0]
+
+The first line adds into x0 itself 8 bytes.
+
+Googling search the significance of these registers,
+https://stackoverflow.com/questions/261419/what-registers-to-save-in-the-arm-c-calling-convention
+
+The link suggests the following:
+
+r0-r3 are the argument and scratch registers; r0-r1 are also the result registers
+r4-r8 are callee-save registers
+r9 might be a callee-save register or not (on some variants of AAPCS it is a special register)
+r10-r11 are callee-save registers
+r12-r15 are special registers
+
+This x0 can be the argument register then.
+8 bytes will increment to the next register. 1 byte = 8 bits, 8*8 = 64 bits.
+
+So the LDR line
+
+	ldr	x0, [x29, 32]
+
+Loads the register with the memory location.
+
+The next line
+
+	ldr x0, [x0]
+	
+Will then override the value within register 0 with this value in the memory location.
+
+Since this is register 0, it could be taken that [x29, 32] has the value of the input of the user.
+
+Then we see BL: https://stackoverflow.com/questions/34091898/bl-instruction-arm-how-does-it-work
+This means that the execution of the code will jump to a function call atoi, then return back
+atoi converts string ASCII argument into integer.
+
+So bl atoi is like calling an inbuilt function; its return value will be loaded into LR (x30).
+
+The value loaded into this function is in x0.
+
+So it converts the value in x0 to integer. Recall from the above, this means lower 32 bits are used.
+Then, that is probably why the author did the next lines:
+
+	mov	w19, w0
+
+Note the 'w' prefix here; this means this operation is dealing with the lower 32 bits of the register 0.
+This line moves into the lower 32 bits of register 19.
+This will thus assume the integer value of argument 1.
+
+	mov	w0, w19
+	bl	func1
+	mov	w1, w0
+
+w19 will equal w0.
+
+Then it invokes label func1:
+
