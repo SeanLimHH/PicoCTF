@@ -1,0 +1,130 @@
+https://play.picoctf.org/practice/challenge/173?page=2
+
+Description:
+
+Who doesn't love cookies? Try to figure out the best one.
+http://mercury.picoctf.net:29649/
+
+This website just shows a search bar with hint text = "snickerdoodle"
+
+Solution:
+
+Right-clicking > Application > Cookies > we see just a row:
+name = "name", value = -1, ...
+
+If we type the hint text = "snickerdoodle", we get instead:
+
+The page says "That is a cookie! Not very special though..."
+And the search bar disappears, replaced with a text:
+"I love snickerdoodle cookies!"
+
+The cookies also changed to 0.
+
+Apart from this, there is not much interesting activity in this cookies section.
+
+Looking at the Network tab, we see:
+
+A few GET requests:
+
+'search' : 
+Request URL:
+http://mercury.picoctf.net:29649/search
+Request Method:
+POST
+Status Code:
+302 FOUND
+Remote Address:
+18.189.209.142:29649
+Referrer Policy:
+strict-origin-when-cross-origin
+
+'Response':
+Content-Length:
+219
+
+Content-Type:
+text/html; charset=utf-8
+Location:
+http://mercury.picoctf.net:29649/check
+Set-Cookie:
+name=0; Path=/
+
+'check' :
+Request URL:
+http://mercury.picoctf.net:29649/check
+Request Method:
+GET
+Status Code:
+200 OK
+Remote Address:
+18.189.209.142:29649
+Referrer Policy:
+strict-origin-when-cross-origin
+
+This is when i input the snickerdoodle hint text.
+
+When we do a random input, we get:
+Just 'search':
+Request URL:
+http://mercury.picoctf.net:29649/search
+Request Method:
+POST
+Status Code:
+302 FOUND
+Remote Address:
+18.189.209.142:29649
+Referrer Policy:
+strict-origin-when-cross-origin
+
+'Response':
+Content-Length:
+209
+
+Content-Type:
+text/html; charset=utf-8
+Location:
+http://mercury.picoctf.net:29649/
+Set-Cookie:
+name=-1; Path=/
+Set-Cookie:
+session=eyJfZmxhc2hlcyI6W3siIHQiOlsiZGFuZ2VyIiwiVGhhdCBkb2Vzbid0IGFwcGVhciB0byBiZSBhIHZhbGlkIGNvb2tpZS4iXX1dfQ.ZZ8jiw.jnYp_vX4yjhfKl-XqStVzOxXrMA; HttpOnly; Path=/
+Vary:
+Cookie
+
+There is no pattern here...
+
+Here, i notice that the only clue left is with is the 1 or 0 response.
+
+Something to do with cookies.. so i change the value of cookie to -2 and refresh the page.
+
+No change, but also no error.
+So i try changing the value to 2 and refresh the page.
+
+Then the page changed to 'I love oatmeal raisin cookies!'.
+
+This suggests, possibly, that the cookie value redirects to a different page in the server.
+
+So here i just play around with the values, increasing it one by one to iterate through all the cookies.
+
+Cookie 18 reveals the flag:
+Flag: picoCTF{3v3ry1_l0v3s_c00k135_a1f5bdb7}
+
+Regarding how the challenge was built:
+
+https://developer.mozilla.org/en-US/docs/Web/API/Document/cookie
+
+After having a server, in the client-side code, obtain the cookies via document.cookie.
+Then based on this cookie, respond with a different message. This is what the webpage is doing.
+
+So the issue here is that the client-side code is reading off the client's data that can be manipulated.
+In this case, the user, myself, can intentionally change the cookie values and thereby make use of this flaw,
+to trick the server to thinking that i have proper rights to the cookie (webpage message).
+
+A few solutions to this problem:
+1. Encrypt this value.
+By encrypting this value both in the server and client-side, it is much harder to guess and figure out the cookie values.
+2. The above point 1. may be inadequate if the user somehow guess 1 2 3 ...
+It is better to use a random numbers or even hashes of the random numbers, in place of 1, 2, 3 of the cookie values.
+This coupled with 1. will ensure that the cookies are not easily revealed.
+
+Flag: picoCTF{3v3ry1_l0v3s_c00k135_a1f5bdb7}
