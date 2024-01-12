@@ -321,7 +321,7 @@ atoi converts string ASCII argument into integer.
 
 So bl atoi is like calling an inbuilt function; its return value will be loaded into LR (x30).
 
-The value loaded into this function is in x0.
+The value loaded into this function is in x0. Return values from a function typically reside in this register
 
 So it converts the value in x0 to integer. Recall from the above, this means lower 32 bits are used.
 Then, that is probably why the author did the next lines:
@@ -340,3 +340,70 @@ w19 will equal w0.
 
 Then it invokes label func1:
 
+func1:
+	sub	sp, sp, #16
+	str	w0, [sp, 12]
+	str	w1, [sp, 8]
+	ldr	w1, [sp, 12]
+	ldr	w0, [sp, 8]
+	cmp	w1, w0
+	bls	.L2
+	ldr	w0, [sp, 12]
+	b	.L3
+
+The first line allocates 16 bytes.
+w0 is register 0 which is conventional for memory for function arguments.
+
+	str	w0, [sp, 12]
+
+Stores the first argument 1 12 bytes away from the stack pointer
+
+	str	w1, [sp, 8]
+	
+Stores the second argument 8 bytes away from the stack pointer
+
+The next two LDR lines replaces the registers with the actual value stored in these
+stored arguments:
+
+	ldr	w1, [sp, 12]
+	ldr	w0, [sp, 8]
+	
+So now w1 has the value of that in w0 and w0 has the value of that in w1.
+
+The difference between str and ldr is not very clear to me. Googling search, there is an article:
+https://medium.com/@devslaf/arm64-assembly-str-and-ldr-instructions-for-apple-silicon-3961f621a43a
+
+	The STR instruction is used to transfer a value from register to memory. 
+	On the other hand the LDR instruction is is used to store a value from memory
+
+Maybe from the above, the sequence is to use STR then LDR because we must first transfer a value from a
+register to memory via STR before we can load the value from memory into the desired register (LDR).
+
+	cmp	w1, w0
+
+Based on this document: http://www-mdp.eng.cam.ac.uk/web/library/enginfo/mdp_micro/lecture3/lecture3-2.html
+
+certain bits of Current Program Status Register (CPSR) will be set based on w1 - w0:
+http://www-mdp.eng.cam.ac.uk/web/library/enginfo/mdp_micro/lecture3/lecture3-1.html
+
+	The CMP (compare) instruction will set the condition codes as follows:
+
+	N = 1 if the most significant bit of (r1 - r2) is 1, i.e. r2 > r1
+	Z = 1 if (r1 - r2) = 0, i.e. r1 = r2
+	C = 1 if r1 and r2 are both unsigned integers AND (r1 < r2)
+	V = 1 if r1 and r2 are both signed integers AND (r1 < r2)
+
+N is negative flag, Z is zero flag, C is carry flag, V is overflow flag.
+
+	bls	.L2
+	ldr	w0, [sp, 12]
+	b	.L3
+
+BLS is branch lower or same. We can look at C = 0 | Z = 1. Then branch. Based on this:
+https://class.ece.iastate.edu/cpre288/resources/docs/ARM-Inst_summary.pdf
+
+Branches to .L2.
+This loads w0 with the value of the memory address at stack pointer with offset of 8
+
+Otherwise, it will load the register with value equal to value at [SP + 12].
+B is unconditional branch, so it will just go to .L3.
