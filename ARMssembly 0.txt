@@ -407,3 +407,94 @@ This loads w0 with the value of the memory address at stack pointer with offset 
 
 Otherwise, it will load the register with value equal to value at [SP + 12].
 B is unconditional branch, so it will just go to .L3.
+
+.L3 reserves space on the stack
+Then it returns the control back to the return address on the stack.
+
+	mov	w1, w0
+	adrp	x0, .LC0
+	add	x0, x0, :lo12:.LC0
+
+What is adrp: https://stackoverflow.com/questions/41906688/what-are-the-semantics-of-adrp-and-adrl-instructions-in-arm-assembly
+
+adr is relative address calculation => give it an immediate offset from program counter and it stores in the register
+the address
+adrp is similar to adr but in pages. It shifts pages relative to the current pages instead of bytes.
+
+adrp is like LDR but for larger data structures (pages of 4KB) or even strings.
+adr is for smaller data structures.
+
+One reason for its existence is to do relative referencing so you do not have to move large chunks of data.
+The main reason for its existence is also for position independent code.
+
+So the above is loading x0 with page .LC0.
+The next line :lo12 extracts the lower 12 bits of the .LC0 after it to an immediate value.
+So in this case, x0 = x0 + lower 12 bits of page .LC0
+
+.LC0 is full of directives, and holds a string.
+
+Looking back at the challenge in totality with the knowledge above:
+
+	.arch armv8-a
+	.file	"chall.c"
+	.text
+	.align	2
+	.global	func1
+	.type	func1, %function
+func1: // w0, w19: 266134863 and w1: 1592237099
+	sub	sp, sp, #16
+	str	w0, [sp, 12]
+	str	w1, [sp, 8]
+	ldr	w1, [sp, 12]
+	ldr	w0, [sp, 8]
+	cmp	w1, w0 // Essentially compares these two values.
+	bls	.L2 // w1 - w0 = 1326102236 > 0. Skips this as C = 1 and Z = 0.
+	ldr	w0, [sp, 12] // w0 = w1 = 1592237099
+	b	.L3
+.L2:
+	ldr	w0, [sp, 8]
+.L3:
+	add	sp, sp, 16
+	ret // Returns 1592237099
+	.size	func1, .-func1
+	.section	.rodata
+	.align	3
+.LC0:
+	.string	"Result: %ld\n"
+	.text
+	.align	2
+	.global	main
+	.type	main, %function
+main:
+	stp	x29, x30, [sp, -48]! // Function prologue
+	add	x29, sp, 0 // Function prologue
+	str	x19, [sp, 16] // Function prologue
+	str	w0, [x29, 44]
+	str	x1, [x29, 32]
+	ldr	x0, [x29, 32] // input 0's value is in the register 0 lower 32 bits. This is "266134863"
+	add	x0, x0, 8
+	ldr	x0, [x0] // override the value in memory address into register "266134863"
+	bl	atoi // now 266134863 is in integer
+	mov	w19, w0 // W19 has w0 which is 266134863
+	ldr	x0, [x29, 32] // w0 is reused here; for second input, as you see in the following lines.
+	add	x0, x0, 16 // input 1.
+	ldr	x0, [x0] // override the value in memory address into register "1592237099"
+	bl	atoi // now 1592237099 is in integer
+	mov	w1, w0 // now w1 has 1592237099. So at this point, w19 has 266134863 and w1 has 1592237099
+	mov	w0, w19 // w0 now has 266134863. So at this point, w0, w19: 266134863 and w1: 1592237099
+	bl	func1 // Function returns a state of w0 = w1 = 1592237099
+	mov	w1, w0 // w1 = 1592237099
+	adrp	x0, .LC0 // Contains the print string
+	add	x0, x0, :lo12:.LC0 // Lower 12 bits of .LC0 which is a string
+	bl	printf // The above two lines and this line is for printing; not really important here.
+	mov	w0, 0 // This is 1592237099
+	ldr	x19, [sp, 16] // Function epilogue
+	ldp	x29, x30, [sp], 48 // Function epilogue
+	ret // Return function value
+	.size	main, .-main
+	.ident	"GCC: (Ubuntu/Linaro 7.5.0-3ubuntu1~18.04) 7.5.0"
+	.section	.note.GNU-stack,"",@progbits
+
+Thus the flag should be 1592237099 in hex: using Python we get: '0x5ee79c2b'
+
+So the flag is picoCTF{5ee79c2b}
