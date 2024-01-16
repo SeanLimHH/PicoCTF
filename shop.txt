@@ -1,0 +1,93 @@
+https://play.picoctf.org/practice/challenge/134?page=3
+
+Description:
+Best Stuff - Cheap Stuff, Buy Buy Buy... Store Instance: source. 
+The shop is open for business at nc mercury.picoctf.net 10337.
+
+Attached is a file called "source"
+
+Running "file source", we get that it is an executable file (ELF)
+Running "./source", it corresponds with "nc mercury.picoctf.net 10337":
+Both open up a command-line menu:
+
+Welcome to the market!
+=====================
+You have 40 coins
+        Item            Price   Count
+(0) Quiet Quiches       10      12
+(1) Average Apple       15      8
+(2) Fruitful Flag       100     1
+(3) Sell an Item
+(4) Exit
+Choose an option:
+
+Running binwalk -B and opening it in HxD did not reveal any interesting information.
+
+I notice also that the option 2 should be the flag. So the goal should be to obtain 100 coins.
+
+The hint states "Always check edge cases when programming".
+
+Here i think it is something to do with the edge cases in the buying and selling procedure.
+
+Buying Quiet Quiches and selling them normally does nothing.
+However, if i tried to buy 4 apples, even with 40 coins, i can somehow buy it.
+The balance is -20 coins. I am unsure if this is intentional.
+
+When you try to sell > what you have, there is a message: "Hey you don't have that many on your cart! What kind of scam is this?"
+
+However, selling with negative values does not show the message.
+For example, if i tried to sell -4 apples, it passes and adds up in negative balance.
+Doing the same with the flag, we can see that the stock count of the flag increases by 1.
+We can then sell the flag to obtain 100 coins to properly buy it:
+Welcome to the market!
+=====================
+You have 40 coins
+        Item            Price   Count
+(0) Quiet Quiches       10      12
+(1) Average Apple       15      8
+(2) Fruitful Flag       100     1
+(3) Sell an Item
+(4) Exit
+Choose an option:
+3
+Your inventory
+(0) Quiet Quiches       10      0
+(1) Average Apple       15      0
+(2) Fruitful Flag       100     0
+What do you want to sell?
+2
+How many?
+-10
+You have -960 coins
+        Item            Price   Count
+(0) Quiet Quiches       10      12
+(1) Average Apple       15      8
+(2) Fruitful Flag       100     1
+(3) Sell an Item
+(4) Exit
+Choose an option:
+3
+
+Your inventory
+(0) Quiet Quiches       10      0
+(1) Average Apple       15      0
+(2) Fruitful Flag       100     10
+What do you want to sell?
+
+We can see here that now we have 10 flags.
+
+The way the program works is that if your balance is > 0, you can choose how many times to
+buy the item as you like. But once your balance <= 0, you cannot buy anymore.
+
+As the balance can go into negative from selling, the author could have not checked for this.
+For negative numbers.
+
+Now, when we buy -10 Quiet Quiches, we get 100 coins somehow. Then you can buy the flag and we get
+an array of characters (i think it is ASCII):
+Flag is:  [112 105 99 111 67 84 70 123 98 52 100 95 98 114 111 103 114 97 109 109 101 114 95 51 100 97 51 52 97 56 102 125]
+Decoding in an ASCII to text converter we get:
+
+picoCTF{b4d_brogrammer_3da34a8f}
+
+which is the desired flag.
+
