@@ -1,0 +1,80 @@
+https://play.picoctf.org/practice/challenge/161?page=3
+
+Description:
+
+There is some interesting information hidden around this site http://mercury.picoctf.net:39698/. Can you find it?
+
+Solution:
+
+This challenge was pretty similar to one i did.
+
+Going to the website > Right Click > Inspect > Elements. We look at the HTML.
+There is the first part of the flag:
+
+picoCTF{t
+
+Then the second part is in the CSS code:
+
+h4ts_4_l0
+
+The difference from another similar exercise is this time the last part is not in the JS code.
+
+For the JS code, there is a tiny text at the bottom that states:
+/* How can I keep Google from indexing my website? */
+
+Googling this, we get:
+https://www.ilfusion.com/how-to-prevent-google-from-indexing-certain-web-pages
+There are four ways to tell Google not to index a page in search engines: 
+1. a “noindex” metatag, 
+    This we insert <meta name=”robots” content=”noindex”> at the top of the page's HTML
+2. an X-Robots-Tag, 
+3. a robots.txt file, 
+4. and through Google Webmaster Tools.
+
+Regarding the first step, we can follow this: https://www.appnovation.com/blog/using-chromes-local-overrides-design-and-performance-optimizations
+to override the website's files with our own.
+Under Sources > Right Click > Overwrite content.
+Then i added and did the first way: a "noindex' metatag. Refreshing the page yields no change.
+
+Doing step 2: https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag
+We add this line: 
+X-Robots-Tag: noindex to the header of the response of the URL under Networks.
+
+Still no change.
+
+Doing step 3: https://developers.google.com/search/docs/crawling-indexing/robots/create-robots-txt?hl=en&visit_id=638409600651210789-2992270977&rd=1
+We access the webpage endpoint: http://mercury.picoctf.net:39698/robots.txt
+The robots.txt at the end redirects to a new webpage with message:
+    "
+    User-agent: *
+    Disallow: /index.html
+    # Part 3: t_0f_pl4c
+    # I think this is an apache server... can you Access the next flag?
+    "
+
+So this is the third part of the flag.
+
+Then the last part, something to do with apache server.
+
+At this point. I honestly could not figure out. Google searching, it is something to do
+with using .htaccess on files.
+
+The concept of .htaccess is that it is a configuration file on web servers that run on Apache.
+It stands for hypertext access.
+
+With this clue, http://mercury.picoctf.net:39698/.htaccess provides us the next part of the flag:
+3s_2_lO0k
+
+There is a textual hint below for the next flag:
+# I love making websites on my Mac, I can Store a lot of information there.
+
+Google searching which file in mac stores file information, we get that the .DS_Store file stores
+custom attributes of its containing folder.
+
+Doing the same thing; accessing webpage endpoint http://mercury.picoctf.net:39698/.DS_Store
+provides us with the final part of the flag:
+_fa04427c}
+
+Combining all parts of the flag, we get:
+picoCTF{th4ts_4_l0t_0f_pl4c3s_2_lO0k_fa04427c}
+
